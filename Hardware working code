@@ -1,0 +1,73 @@
+#include <Servo.h>
+
+// Ultrasonic Sensor Pins
+const int trigPin = 9;
+const int echoPin = 10;
+
+// Servo Motor
+Servo signServo;
+const int servoPin = 6;
+
+// Mode Selection Button
+const int modeButton = 7;
+bool outdoorMode = false;  // Default: Indoor Mode
+
+// Buzzer (Optional)
+const int buzzer = 8;
+
+// Distance Thresholds
+const int indoorThreshold = 50;  // cm
+const int outdoorThreshold = 100; // cm
+
+void setup() {
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    pinMode(modeButton, INPUT_PULLUP);
+    pinMode(buzzer, OUTPUT);
+
+    signServo.attach(servoPin);
+    signServo.write(90);  // Default position
+
+    Serial.begin(9600);
+}
+
+void loop() {
+    long duration;
+    int distance;
+
+    // Read ultrasonic sensor
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+
+    duration = pulseIn(echoPin, HIGH);
+    distance = duration * 0.034 / 2;  // Convert to cm
+
+    // Check for mode change
+    if (digitalRead(modeButton) == LOW) {
+        delay(300);  // Debounce
+        outdoorMode = !outdoorMode;  // Toggle mode
+        Serial.println(outdoorMode ? "Outdoor Mode" : "Indoor Mode");
+    }
+
+    // Obstacle Detection Logic
+    if (outdoorMode) {
+        if (distance > 0 && distance < outdoorThreshold) {
+            digitalWrite(buzzer, HIGH);  // Beep in outdoor mode
+            signServo.write(0);  // Move servo to signal warning
+        } else {
+            digitalWrite(buzzer, LOW);
+            signServo.write(90);  // Default position
+        }
+    } else {
+        if (distance > 0 && distance < indoorThreshold) {
+            signServo.write(0);  // Move servo to signal warning
+        } else {
+            signServo.write(90);  // Default position
+        }
+    }
+
+    delay(200);
+}
